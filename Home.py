@@ -1,13 +1,31 @@
 import streamlit as st
+import os
 
-option = st.selectbox(
-    ":violet[당신이 좋아하는 자동차는? :car:]",
-    ("람보르기니", "부가티", "페라리"),
-    index=1,
-    placeholder="좋아하는 자동차를 선택하세요.",
+folder = "pages"
+files = ["DocumentGPT", "PrivateGPT", "QuizGPT", "SiteGPT", "MeetingGPT", "InvestorGPT"]
+
+# Create files in pages folder
+os.makedirs(folder, exist_ok=True)
+
+for idx, filename in enumerate(files, 1):
+    file = os.path.join(folder, f"{str(idx).zfill(2)}_{filename}.py")
+    if os.path.exists(file):
+        continue
+    with open(file, "w") as f:
+        f.write(f"import streamlit as st\n\nst.title('{filename}')")
+
+
+st.set_page_config(page_title="FullstackGPT Home", page_icon="🪄")
+
+st.title("FullstackGPT Home")
+
+st.markdown(
+    """
+- [DocumentGPT](/DocumentGPT)
+- [PrivateGPT](/PrivateGPT)
+- [QuizGPT](/QuizGPT)
+- [SiteGPT](/SiteGPT)
+- [MeetingGPT](/MeetingGPT)
+- [InvestorGPT](/InvestorGPT)
+"""
 )
-
-if option:
-    st.write(f"당신이 좋아하는 자동차는 {option}입니다.")
-else:
-    st.write("좋아하는 자동차를 선택해주세요.")
