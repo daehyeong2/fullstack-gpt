@@ -5,8 +5,16 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
 from langchain.document_loaders import UnstructuredFileLoader
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
+from langchain.chat_models.openai import ChatOpenAI
 
 st.set_page_config(page_title="DocumentGPT", page_icon="📜")
+
+with st.sidebar:
+    temperature = st.slider("Temperature", 0.1, 1.0)
+
+llm = ChatOpenAI(temperature=temperature)
 
 
 def paint_history():
@@ -43,6 +51,27 @@ def send_message(message, role, save=True):
         st.session_state["messages"].append({"message": message, "role": role})
 
 
+def foramt_document(docs):
+    return "\n\n".join(document.page_content for document in docs)
+
+
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+당신은 문서 관련 전문가입니다. 당신은 사용자의 질문에 대답해야 합니다.
+대답을 할 때에는 주어진 context만으로 대답하세요. 당신이 원래 알고 있는 지식을 이용하지 마세요.
+만약 당신이 모른다면 모른다고 하세요. 말을 지어내지 마세요.
+--------Context--------
+{context}
+-----------------------
+""",
+        ),
+        ("human", "{question}"),
+    ]
+)
+
 st.title("DocumentGPT")
 
 chat, file_upload = st.tabs(["Chat", "Document"])
@@ -64,5 +93,15 @@ with chat:
         paint_history()
         if message:
             send_message(message, "human")
+            chain = (
+                {
+                    "context": retriever | RunnableLambda(foramt_document),
+                    "question": RunnablePassthrough(),
+                }
+                | prompt
+                | llm
+            )
+            response = chain.invoke(message)
+            send_message(response.content, "ai")
     else:
         st.info("먼저 문서를 업로드 해주세요!")
