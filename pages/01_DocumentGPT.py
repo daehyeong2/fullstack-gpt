@@ -1,4 +1,7 @@
+from operator import itemgetter
 import time
+from typing import Dict, List
+from uuid import UUID
 import streamlit as st
 from langchain.storage import LocalFileStore
 from langchain.text_splitter import CharacterTextSplitter
@@ -8,13 +11,34 @@ from langchain.document_loaders import UnstructuredFileLoader
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.chat_models.openai import ChatOpenAI
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.prompts import MessagesPlaceholder
+from langchain.memory import ConversationSummaryBufferMemory
 
 st.set_page_config(page_title="DocumentGPT", page_icon="📜")
 
 with st.sidebar:
     temperature = st.slider("Temperature", 0.1, 1.0)
 
-llm = ChatOpenAI(temperature=temperature)
+
+class ChatCallbackHandler(BaseCallbackHandler):
+    def __init__(self, *args, **kwargs):
+        self.message = ""
+
+    def on_llm_start(self, *args, **kwargs):
+        self.message_box = st.empty()
+
+    def on_llm_end(self, *args, **kwargs):
+        save_message(self.message, "ai")
+
+    def on_llm_new_token(self, token, *args, **kwargs):
+        self.message += token
+        self.message_box.markdown(self.message)
+
+
+llm = ChatOpenAI(
+    temperature=temperature, streaming=True, callbacks=[ChatCallbackHandler()]
+)
 
 
 def paint_history():
@@ -44,15 +68,28 @@ def embed_file(file):
     return retriever
 
 
+def save_message(message, role):
+    st.session_state["messages"].append({"message": message, "role": role})
+
+
+def save_memory(input, output):
+    st.session_state.memory.save_context({"input": input}, {"output": output})
+
+
 def send_message(message, role, save=True):
     with st.chat_message(role):
         st.markdown(message)
     if save:
-        st.session_state["messages"].append({"message": message, "role": role})
+        save_message(message, role)
 
 
 def foramt_document(docs):
     return "\n\n".join(document.page_content for document in docs)
+
+
+def invoke_chain(message):
+    response = chain.invoke(message)
+    save_memory(message, response.content)
 
 
 prompt = ChatPromptTemplate.from_messages(
@@ -62,12 +99,14 @@ prompt = ChatPromptTemplate.from_messages(
             """
 당신은 문서 관련 전문가입니다. 당신은 사용자의 질문에 대답해야 합니다.
 대답을 할 때에는 주어진 context만으로 대답하세요. 당신이 원래 알고 있는 지식을 이용하지 마세요.
+context에 있는 내용을 기반으로 결과를 생성해줘.
 만약 당신이 모른다면 모른다고 하세요. 말을 지어내지 마세요.
 --------Context--------
 {context}
 -----------------------
 """,
         ),
+        MessagesPlaceholder(variable_name="history"),
         ("human", "{question}"),
     ]
 )
@@ -83,6 +122,9 @@ if file:
     message = st.chat_input("AI에게 문서에 대해 궁금한 것을 물어보세요!")
 else:
     st.session_state["messages"] = []
+    st.session_state["memory"] = ConversationSummaryBufferMemory(
+        llm=llm, max_token_limit=3000, return_messages=True
+    )
 
 with chat:
     if file:
@@ -98,10 +140,16 @@ with chat:
                     "context": retriever | RunnableLambda(foramt_document),
                     "question": RunnablePassthrough(),
                 }
+                | RunnablePassthrough.assign(
+                    history=RunnableLambda(
+                        st.session_state.memory.load_memory_variables
+                    )
+                    | itemgetter("history")
+                )
                 | prompt
                 | llm
             )
-            response = chain.invoke(message)
-            send_message(response.content, "ai")
+            with st.chat_message("ai"):
+                invoke_chain(message)
     else:
         st.info("먼저 문서를 업로드 해주세요!")
