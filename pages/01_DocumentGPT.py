@@ -1,7 +1,4 @@
 from operator import itemgetter
-import time
-from typing import Dict, List
-from uuid import UUID
 import streamlit as st
 from langchain.storage import LocalFileStore
 from langchain.text_splitter import CharacterTextSplitter
@@ -49,10 +46,10 @@ def paint_history():
 @st.cache_data(show_spinner="Embedding..")
 def embed_file(file):
     file_content = file.read()
-    file_path = f"./.cache/files/{file.name}"
+    file_path = f"./.cache/document_files/{file.name}"
     with open(file_path, "wb") as f:
         f.write(file_content)
-    cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
+    cache_dir = LocalFileStore(f"./.cache/document_embeddings/{file.name}")
     splitter = CharacterTextSplitter.from_tiktoken_encoder(
         separator="\n", chunk_size=600, chunk_overlap=100
     )
