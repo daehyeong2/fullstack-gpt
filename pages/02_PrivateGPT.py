@@ -3,11 +3,11 @@ import streamlit as st
 from langchain.storage import LocalFileStore
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
-from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
+from langchain.embeddings import OllamaEmbeddings, CacheBackedEmbeddings
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
-from langchain.chat_models.openai import ChatOpenAI
+from langchain.chat_models.ollama import ChatOllama
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.prompts import MessagesPlaceholder
 from langchain.memory import ConversationSummaryBufferMemory
@@ -33,8 +33,11 @@ class ChatCallbackHandler(BaseCallbackHandler):
         self.message_box.markdown(self.message)
 
 
-llm = ChatOpenAI(
-    temperature=temperature, streaming=True, callbacks=[ChatCallbackHandler()]
+llm = ChatOllama(
+    model="mistral:latest",
+    temperature=temperature,
+    streaming=True,
+    callbacks=[ChatCallbackHandler()],
 )
 
 
@@ -55,7 +58,7 @@ def embed_file(file):
     )
     loader = UnstructuredFileLoader(file_path)
     docs = loader.load_and_split(text_splitter=splitter)
-    embeddings = OpenAIEmbeddings()
+    embeddings = OllamaEmbeddings(model="mistral:latest")
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
 
     vectorstore = FAISS.from_documents(docs, cached_embeddings)
@@ -89,26 +92,29 @@ def invoke_chain(message):
     save_memory(message, response.content)
 
 
-prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """
+prompt = ChatPromptTemplate.from_template(
+    """
 당신은 문서 관련 전문가입니다. 당신은 사용자의 질문에 대답해야 합니다.
-대답을 할 때에는 주어진 context만으로 대답하세요. 당신이 원래 알고 있는 지식을 이용하지 마세요.
+대답을 할 때에는 주어진 context만으로 대답하세요. 트레이닝 데이터를 제외하세요.
 context에 있는 내용을 기반으로 결과를 생성해줘.
 만약 당신이 모른다면 모른다고 하세요. 말을 지어내지 마세요.
+
+사용자는 과거 대화 기록에서 질문 할 수도 있습니다. 따라서 다음 자료를 확인하세요.
+--------History-------
+{history}
+-----------------------
+
 --------Context--------
 {context}
 -----------------------
-""",
-        ),
-        MessagesPlaceholder(variable_name="history"),
-        ("human", "{question}"),
-    ]
+
+--------Question-------
+{question}
+-----------------------
+"""
 )
 
-st.title("DocumentGPT")
+st.title("PrivateGPT")
 
 chat, file_upload = st.tabs(["Chat", "Document"])
 

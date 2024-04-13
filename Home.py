@@ -22,7 +22,7 @@ st.title("FullstackGPT Home")
 st.markdown(
     """
 - [x] [DocumentGPT](/DocumentGPT)
-- [ ] [PrivateGPT](/PrivateGPT)
+- [x] [PrivateGPT](/PrivateGPT)
 - [ ] [QuizGPT](/QuizGPT)
 - [ ] [SiteGPT](/SiteGPT)
 - [ ] [MeetingGPT](/MeetingGPT)
