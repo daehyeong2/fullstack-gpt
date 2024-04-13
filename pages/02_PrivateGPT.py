@@ -16,6 +16,9 @@ st.set_page_config(page_title="PrivateGPT", page_icon="⚙️")
 
 with st.sidebar:
     temperature = st.slider("Temperature", 0.1, 1.0)
+    st.session_state["model"] = st.selectbox(
+        "모델을 선택 해주세요.", ("mistral", "gemma", "llama2")
+    )
 
 
 class ChatCallbackHandler(BaseCallbackHandler):
@@ -34,7 +37,7 @@ class ChatCallbackHandler(BaseCallbackHandler):
 
 
 llm = ChatOllama(
-    model="mistral:latest",
+    model=st.session_state["model"],
     temperature=temperature,
     streaming=True,
     callbacks=[ChatCallbackHandler()],
