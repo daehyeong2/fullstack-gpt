@@ -36,6 +36,18 @@ def foramt_document(docs):
     return "\n\n".join(document.page_content for document in docs)
 
 
+@st.cache_data(show_spinner="위키피디아에 검색 중..")
+def get_from_wikipedia(topic):
+    retriever = WikipediaRetriever(lang="ko")
+    return retriever.get_relevant_documents(topic)
+
+
+@st.cache_data(show_spinner="문제 생성 중..")
+def generate_questions(_docs, topic):
+    chain = {"context": questions_chain} | formatting_chain | output_parser
+    return chain.invoke(_docs)
+
+
 questions_prompt = ChatPromptTemplate.from_messages(
     [
         (
@@ -260,10 +272,7 @@ with st.sidebar:
             "위키피디아에서 검색", placeholder="검색할 내용을 입력해 주세요."
         )
         if topic:
-            retriever = WikipediaRetriever(lang="ko")
-            with st.status(f"위키피디아에 검색 중.."):
-                docs = retriever.get_relevant_documents(topic)
-            topic = ""
+            docs = get_from_wikipedia(topic)
 
 
 if not docs:
@@ -280,6 +289,5 @@ else:
     start = st.button("문제 생성")
 
     if start:
-        chain = {"context": questions_chain} | formatting_chain | output_parser
-        response = chain.invoke(docs)
+        response = generate_questions(docs, topic if topic else file.name)
         st.write(response)
