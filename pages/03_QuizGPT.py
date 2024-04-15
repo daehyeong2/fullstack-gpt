@@ -286,8 +286,18 @@ QuizGPT에 오신 것을 환영합니다.
 """
     )
 else:
-    start = st.button("문제 생성")
-
-    if start:
-        response = generate_questions(docs, topic if topic else file.name)
-        st.write(response)
+    response = generate_questions(docs, topic if topic else file.name)
+    with st.form("questions_form"):
+        for question in response["questions"]:
+            value = st.radio(
+                question["question"],
+                [answer["answer"] for answer in question["answers"]],
+                index=None,
+            )
+            isCorrect = {"answer": value, "correct": True} in question["answers"]
+            if isCorrect:
+                st.success("✅ 정답입니다!")
+            elif value:
+                st.error("❌ 오답입니다.")
+            st.divider()
+        button = st.form_submit_button()
