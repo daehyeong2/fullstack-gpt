@@ -57,6 +57,7 @@ questions_prompt = ChatPromptTemplate.from_messages(
 당신은 학생들의 지식 수준을 평가하기 위해 주어진 정보를 이용해서 10개의 문제를 출제해야 합니다.
 확실한 정보나 애매하지 않은 정보만 이용하세요.
 각각의 문제는 무조건 4개의 선택지로 이루어져 있고 그 중 1개만 정답이게 하세요. (모든 선택지는 문장이 아닌 단어여야 합니다.)
+무조건 한개의 정답은 있어야 하고 중복 선택지가 있으면 안됩니다.
 
 문제 예시:
 
@@ -288,9 +289,9 @@ QuizGPT에 오신 것을 환영합니다.
 else:
     response = generate_questions(docs, topic if topic else file.name)
     with st.form("questions_form"):
-        for question in response["questions"]:
+        for idx, question in enumerate(response["questions"]):
             value = st.radio(
-                question["question"],
+                f"{idx+1}: {question['question']}",
                 [answer["answer"] for answer in question["answers"]],
                 index=None,
             )
