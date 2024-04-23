@@ -17,7 +17,7 @@ from langchain.vectorstores.faiss import FAISS
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.prompts import MessagesPlaceholder
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
-from langchain.memory import ConversationSummaryBufferMemory
+from langchain.memory import ConversationBufferMemory
 from langchain.callbacks.base import BaseCallbackHandler
 
 
@@ -294,7 +294,7 @@ if video:
                 invoke_chain(query)
 else:
     st.session_state["messages"] = []
-    st.session_state["memory"] = ConversationSummaryBufferMemory(
+    st.session_state["memory"] = ConversationBufferMemory(
         llm=llm, max_token_limit=1000, return_messages=True
     )
     st.session_state["isSummaryGenerated"] = False
