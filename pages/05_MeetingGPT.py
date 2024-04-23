@@ -5,6 +5,11 @@ from pydub import AudioSegment
 import openai
 import glob
 import os
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.document_loaders import TextLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema.output_parser import StrOutputParser
 
 st.set_page_config(
     page_title="MeetingGPT",
@@ -14,6 +19,10 @@ st.set_page_config(
 st.title("MeetingGPT")
 st.markdown(
     "MeetingGPT에 오신 것을 환영합니다. 사이드바에서 동영상을 업로드하면 대화의 요약과 대화에 대한 질문을 할 수 있는 챗봇을 제공해 드립니다."
+)
+
+llm = ChatOpenAI(
+    temperature=0.1,
 )
 
 
@@ -103,3 +112,64 @@ if video:
     with transcript_tab:
         with open(transcript_path, "r") as f:
             st.write(f.read())
+    with summary_tab:
+        start = st.button("요약 생성하기")
+        if start:
+            loader = TextLoader(transcript_path)
+            splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+                chunk_size=2400,
+                chunk_overlap=300,
+            )
+            docs = loader.load_and_split(text_splitter=splitter)
+
+            first_summary_prompt = ChatPromptTemplate.from_template(
+                """
+                당신은 문서 요약 전문가입니다.
+                다음 문서를 정확하게 요약하세요.
+                
+                {text}
+            """
+            )
+
+            progress_text = "요약하는 중.."
+
+            first_summary_chain = first_summary_prompt | llm | StrOutputParser()
+
+            my_bar = st.progress(0, text=f"{progress_text} (0/{len(docs)})")
+
+            summary = first_summary_chain.invoke({"text": docs[0].page_content})
+
+            my_bar.progress(1 / len(docs), text=f"{progress_text} (1/{len(docs)})")
+
+            refine_prompt = ChatPromptTemplate.from_template(
+                """
+                Your job is to produce a final summary.
+                We have provided an existing summary up
+                to a certain point: {existing_summary}
+                We have the opportunity to refine the
+                existing summary (only if needed) with
+                some more context below.
+                --------
+                {context}
+                --------
+                Given the new context, refine the
+                original summary.
+                If the context isn't useful, RETURN the
+                original summary.
+            """
+            )
+
+            refine_chain = refine_prompt | llm | StrOutputParser()
+
+            for i, doc in enumerate(docs[1:]):
+                summary = refine_chain.invoke(
+                    {
+                        "existing_summary": summary,
+                        "context": doc.page_content,
+                    }
+                )
+                my_bar.progress(
+                    (i + 2) / len(docs), f"{progress_text} ({i+2}/{len(docs)})"
+                )
+
+            st.write(summary)
