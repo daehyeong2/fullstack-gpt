@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from typing import Any
+from fastapi import Body, FastAPI, Form, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 app = FastAPI(
@@ -21,6 +23,9 @@ class Quote(BaseModel):
     )
 
 
+user_token_db = {"ABCDEF": "gorani"}
+
+
 @app.get(
     "/quote",
     summary="Goracleus Larunen의 명언을 무작위로 반환합니다.",
@@ -28,8 +33,28 @@ class Quote(BaseModel):
     response_description="명언 Object를 반환하며 Object는 명언과 그 명언을 말한 날짜를 포함합니다.",
     response_model=Quote,
 )
-def get_quote():
+def get_quote(request: Request):
     return {
         "quote": "Life is short so eat it all.",
         "year": 1324,
     }
+
+
+@app.get("/authorize", response_class=HTMLResponse, include_in_schema=False)
+def handle_authorize(client_id: str, redirect_uri: str, state: str):
+    return f"""
+        <html>
+            <head>
+                <title>Goracleus Larunen</title>
+            </head>
+            <body>
+                <h1>Log Into Goracleus Larunen</h1>
+                <a href="{redirect_uri}?code=ABCDEF&state={state}">Authorize Goracleus Larunen GPT</a>
+            </body>
+        </html>
+    """
+
+
+@app.post("/token", include_in_schema=False)
+def handle_token(code=Form(...)):
+    return {"access_token": user_token_db[code]}
