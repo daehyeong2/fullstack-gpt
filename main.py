@@ -56,7 +56,6 @@ def get_recipe(ingredient: str):
     description="음식 이름을 받고 그 음식을 좋아하는 음식 리스트에 저장합니다.",
 )
 def add_favorite_food(request: Request, name: str):
-    user_token_db["test"] = "d"
     token = request.headers["authorization"].split()[1]
     if token not in user_token_db:
         user_token_db[token] = {"favorite_food_list": []}
