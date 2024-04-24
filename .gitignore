@@ -2,5 +2,5 @@
 .env
 /examples
 /.cache
-/.streamlit
+/.streamlit/secrets.toml
 /files
