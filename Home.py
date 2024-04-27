@@ -27,5 +27,6 @@ st.markdown(
 - [x] [SiteGPT](/SiteGPT)
 - [x] [MeetingGPT](/MeetingGPT)
 - [x] [InvestorGPT](/InvestorGPT)
+- [ ] [AssistantGPT](/AssistantGPT)
 """
 )

@@ -355,6 +355,7 @@ def embed_file(url, _docs):
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
     vector_store = FAISS.from_documents(_docs, cached_embeddings)
     retriever = vector_store.as_retriever()
+    print(retriever.invoke("플러터"))
     return retriever
 
 
